@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attribution Investigator</title>
+<style>
+  :root {
+    --ink: #1a1d23;
+    --ink-soft: #5a6270;
+    --line: #dde1e7;
+    --bg: #f7f8fa;
+    --panel: #ffffff;
+    --accent: #2f5fdb;
+    --accent-soft: #eaf0ff;
+    --warn: #b8860b;
+    --warn-bg: #fff8e6;
+    --bad: #c0392b;
+    --bad-bg: #fdecea;
+    --good: #1e8e5a;
+    --good-bg: #e9f7f0;
+    --mono: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    padding: 40px 20px 80px;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  header {
+    margin-bottom: 28px;
+  }
+  header h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .field { margin-bottom: 18px; }
+  .field:last-of-type { margin-bottom: 0; }
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: var(--mono);
+    background: #fbfbfc;
+    color: var(--ink);
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+  }
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fbfbfc;
+    color: var(--ink);
+    resize: vertical;
+    min-height: 90px;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+  }
+  input[type="file"] {
+    width: 100%;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .hint {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 5px;
+    font-weight: 400;
+  }
+  button#submitBtn {
+    margin-top: 22px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 7px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button#submitBtn:hover { background: #2650b8; }
+  button#submitBtn:disabled {
+    background: #b7c4e6;
+    cursor: not-allowed;
+  }
+  #status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 14px;
+  }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #report { display: none; }
+  .report-section {
+    margin-bottom: 18px;
+  }
+  .report-section:last-child { margin-bottom: 0; }
+  .report-section h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    margin: 0 0 10px;
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 6px 12px;
+    font-size: 14px;
+  }
+  .kv dt { color: var(--ink-soft); }
+  .kv dd { margin: 0; font-family: var(--mono); font-size: 13px; word-break: break-all; }
+
+  .flag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 5px;
+    margin-left: 6px;
+  }
+  .flag.bad { background: var(--bad-bg); color: var(--bad); }
+  .flag.warn { background: var(--warn-bg); color: var(--warn); }
+  .flag.good { background: var(--good-bg); color: var(--good); }
+
+  .url-box {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: #fbfbfc;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 12px;
+    word-break: break-all;
+    margin-top: 8px;
+  }
+  .url-box.flagged { border-color: var(--bad); background: var(--bad-bg); }
+  .url-box .label { color: var(--ink-soft); font-family: var(--mono); font-size: 11px; display: block; margin-bottom: 3px; text-transform: uppercase; }
+
+  table.events {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  table.events th, table.events td {
+    text-align: left;
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--line);
+    word-break: break-all;
+    overflow-wrap: anywhere;
+  }
+  table.events th {
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  #errorBox {
+    display: none;
+    background: var(--bad-bg);
+    border: 1px solid var(--bad);
+    color: var(--bad);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 13px;
+    margin-top: 14px;
+  }
+
+  code.inline { font-family: var(--mono); background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Attribution Investigator</h1>
+    <p>Enter an account ID to pull attribution data and get an automated findings report.</p>
+  </header>
+
+  <div class="panel">
+    <div class="field">
+      <label for="accountId">Account ID</label>
+      <input type="text" id="accountId" placeholder="e.g. 4505016097" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="expectedUrl">Expected landing URL <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+      <input type="text" id="expectedUrl" placeholder="https://example.com/campaign?...">
+      <div class="hint">The URL you used when testing the click — used to check for unpopulated macros or mismatches.</div>
+    </div>
+
+    <div class="field">
+      <label for="mondayTicketId">Monday Ticket <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+      <input type="text" id="mondayTicketId" placeholder="Paste the item ID or the full URL, e.g. https://tangome.monday.com/boards/9577134773/pulses/12511440827">
+      <div class="hint">If provided, the report will also be posted as a comment on this Monday.com item.</div>
+    </div>
+
+    <div class="field">
+      <label for="devicePlatformOs">Device Platform/OS <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+      <input type="text" id="devicePlatformOs" placeholder="e.g. iOS 17 / Android 14">
+    </div>
+
+    <div class="field">
+      <label for="loginMethod">Login Method <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+      <input type="text" id="loginMethod" placeholder="e.g. Google login">
+    </div>
+
+    <div class="field">
+      <label for="shortSummary">Short Summary <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+      <textarea id="shortSummary" placeholder="Free-text summary of the issue for the Monday ticket..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="attachmentFile">Attach screenshot/video <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></label>
+      <input type="file" id="attachmentFile">
+      <div class="hint">If provided and a Monday Ticket ID is set, the file will be attached to the posted comment.</div>
+    </div>
+
+    <button id="submitBtn">Run investigation</button>
+
+    <div id="status">
+      <div class="spinner"></div>
+      <span id="statusText">Querying BigQuery and building report…</span>
+    </div>
+
+    <div id="errorBox"></div>
+  </div>
+
+  <div class="panel" id="report"></div>
+
+</div>
+
+<script>
+  // TODO: replace with your live Make webhook URL once the scenario is published
+  const WEBHOOK_URL = "https://hook.eu1.make.celonis.com/vovweav33itdwuui4mnify646n434ytf";
+  const WEBHOOK_API_KEY = "hN0y4Z6yBL_Qp0pPL9FqEaYvN9WGfafSNdo9ungEGBY";
+
+  const submitBtn = document.getElementById("submitBtn");
+  const statusEl = document.getElementById("status");
+  const statusText = document.getElementById("statusText");
+  const errorBox = document.getElementById("errorBox");
+  const reportEl = document.getElementById("report");
+  const accountIdInput = document.getElementById("accountId");
+  const expectedUrlInput = document.getElementById("expectedUrl");
+  const mondayTicketIdInput = document.getElementById("mondayTicketId");
+  const devicePlatformOsInput = document.getElementById("devicePlatformOs");
+  const loginMethodInput = document.getElementById("loginMethod");
+  const shortSummaryInput = document.getElementById("shortSummary");
+  const attachmentFileInput = document.getElementById("attachmentFile");
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function flag(text, kind) {
+    return `<span class="flag ${kind}">${escapeHtml(text)}</span>`;
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result || "";
+        const base64 = String(result).split(",")[1] || "";
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error("Could not read the attached file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function extractMondayItemId(input) {
+    if (!input) return "";
+    const trimmed = input.trim();
+    // Full URL like https://tangome.monday.com/boards/9577134773/pulses/12511440827
+    const pulsesMatch = trimmed.match(/\/pulses\/(\d+)/);
+    if (pulsesMatch) return pulsesMatch[1];
+    // Fallback: last run of digits in the string (covers raw ID or other URL shapes)
+    const digitsMatch = trimmed.match(/(\d+)(?!.*\d)/);
+    return digitsMatch ? digitsMatch[1] : trimmed;
+  }
+
+  // Expects the webhook to return JSON shaped like:
+  // {
+  //   attribution_type, utm_source, click_id,
+  //   url_check: { expected_url, landing_url, macros_found: [...], match: bool },
+  //   network_check: { utm_source, reported_ad_network_name, mismatch: bool },
+  //   events: [ { event_name, status_code } ]
+  // }
+  function renderReport(data) {
+    let html = "";
+
+    html += `
+      <div class="report-section">
+        <h3>Core details</h3>
+        <dl class="kv">
+          <dt>Attribution type</dt><dd>${escapeHtml(data.attribution_type ?? "—")}</dd>
+          <dt>UTM source</dt><dd>${escapeHtml(data.utm_source ?? "—")}</dd>
+          <dt>Click ID</dt><dd>${escapeHtml(data.click_id ?? "—")}</dd>
+          ${data.device_platform_os ? `<dt>Device Platform/OS</dt><dd>${escapeHtml(data.device_platform_os)}</dd>` : ""}
+          ${data.login_method ? `<dt>Login Method</dt><dd>${escapeHtml(data.login_method)}</dd>` : ""}
+          ${data.referrer_url ? `<dt>Referrer URL</dt><dd>${escapeHtml(data.referrer_url)}</dd>` : ""}
+        </dl>
+      </div>
+    `;
+
+    if (data.ad_network_params && data.ad_network_params.length) {
+      html += `
+        <div class="report-section">
+          <h3>Ad network params</h3>
+          <table class="events">
+            <thead><tr><th>Key</th><th>Value</th></tr></thead>
+            <tbody>
+              ${data.ad_network_params.map(p => `<tr><td>${escapeHtml(p.key)}</td><td>${escapeHtml(p.value)}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    if (data.url_check) {
+      const uc = data.url_check;
+      const hasMacros = uc.macros_found && uc.macros_found.length > 0;
+      html += `
+        <div class="report-section">
+          <h3>URL check ${hasMacros ? flag("Unpopulated macro", "bad") : (uc.expected_url ? flag("Clean", "good") : "")}</h3>
+          ${uc.expected_url ? `
+            <div class="url-box"><span class="label">Expected</span>${escapeHtml(uc.expected_url)}</div>
+          ` : ""}
+          <div class="url-box ${hasMacros ? "flagged" : ""}"><span class="label">Landing URL</span>${escapeHtml(uc.landing_url ?? "—")}</div>
+          ${hasMacros ? `<div class="hint" style="margin-top:8px;">Found unpopulated macro(s): ${uc.macros_found.map(m => `<code class="inline">${escapeHtml(m)}</code>`).join(" ")}</div>` : ""}
+        </div>
+      `;
+    }
+
+    if (data.network_check) {
+      const nc = data.network_check;
+      html += `
+        <div class="report-section">
+          <h3>Network mismatch check ${nc.mismatch ? flag("Mismatch", "warn") : flag("Match", "good")}${nc.utm_source_valid === false ? flag("Unrecognized utm_source", "bad") : ""}</h3>
+          <dl class="kv">
+            <dt>UTM source</dt><dd>${escapeHtml(nc.utm_source ?? "—")}</dd>
+            <dt>Reported network</dt><dd>${escapeHtml(nc.reported_ad_network_name ?? "—")}</dd>
+          </dl>
+          ${nc.note ? `<div class="hint" style="margin-top:8px;">${escapeHtml(nc.note)}</div>` : ""}
+          ${nc.utm_source_note ? `<div class="hint" style="margin-top:4px;">${escapeHtml(nc.utm_source_note)}</div>` : ""}
+        </div>
+      `;
+    }
+
+    if (data.events && data.events.length) {
+      html += `
+        <div class="report-section">
+          <h3>Event summary</h3>
+          <table class="events">
+            <thead><tr><th>Event</th><th>Status code</th><th>Attribution type</th></tr></thead>
+            <tbody>
+              ${data.events.map(e => `<tr><td>${escapeHtml(e.event_name)}</td><td>${escapeHtml(e.status_code)}</td><td>${escapeHtml(e.event_attribution_type ?? "—")}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    reportEl.innerHTML = html;
+    reportEl.style.display = "block";
+  }
+
+  async function runInvestigation() {
+    const accountId = accountIdInput.value.trim();
+    const expectedUrl = expectedUrlInput.value.trim();
+    const mondayTicketId = extractMondayItemId(mondayTicketIdInput.value);
+    const devicePlatformOs = devicePlatformOsInput.value.trim();
+    const loginMethod = loginMethodInput.value.trim();
+    const shortSummary = shortSummaryInput.value.trim();
+
+    errorBox.style.display = "none";
+    reportEl.style.display = "none";
+    reportEl.innerHTML = "";
+
+    if (!accountId) {
+      errorBox.textContent = "Enter an account ID before running the investigation.";
+      errorBox.style.display = "block";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    statusEl.style.display = "flex";
+    statusText.textContent = "Querying BigQuery and building report…";
+
+    try {
+      let attachmentFilename = null;
+      let attachmentData = null;
+      const file = attachmentFileInput.files[0];
+      if (file) {
+        statusText.textContent = "Encoding attachment…";
+        attachmentFilename = file.name;
+        attachmentData = await readFileAsBase64(file);
+        statusText.textContent = "Querying BigQuery and building report…";
+      }
+
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-make-apikey": WEBHOOK_API_KEY
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          expected_landing_url: expectedUrl || null,
+          monday_ticket_id: mondayTicketId || null,
+          device_platform_os: devicePlatformOs || null,
+          login_method: loginMethod || null,
+          short_summary: shortSummary || null,
+          attachment_filename: attachmentFilename,
+          attachment_data: attachmentData
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Webhook returned ${res.status}`);
+      }
+
+      const contentType = res.headers.get("content-type") || "";
+      let data;
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // Fallback: if the scenario returns plain text/HTML instead of JSON
+        const text = await res.text();
+        reportEl.innerHTML = text;
+        reportEl.style.display = "block";
+        return;
+      }
+
+      renderReport(data);
+    } catch (err) {
+      errorBox.textContent = "Couldn't complete the investigation: " + err.message + ". Check the webhook URL and try again.";
+      errorBox.style.display = "block";
+    } finally {
+      submitBtn.disabled = false;
+      statusEl.style.display = "none";
+    }
+  }
+
+  submitBtn.addEventListener("click", runInvestigation);
+  accountIdInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runInvestigation(); });
+  expectedUrlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runInvestigation(); });
+  mondayTicketIdInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runInvestigation(); });
+  devicePlatformOsInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runInvestigation(); });
+  loginMethodInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runInvestigation(); });
+</script>
+</body>
+</html>
